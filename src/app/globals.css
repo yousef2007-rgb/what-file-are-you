@@ -1,26 +1,168 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --font-arcade: 'Press Start 2P', monospace, sans-serif;
+    --font-terminal: 'VT323', monospace, sans-serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Authentic Atari 8-bit Typography */
+.font-arcade {
+  font-family: var(--font-arcade), monospace;
+}
+
+.font-terminal {
+  font-family: var(--font-terminal), monospace;
+}
+
+/* Strict Boxy Atari Borders & Hard Drop Shadows */
+.atari-box {
+  border: 4px solid #000000;
+  box-shadow: 6px 6px 0px #000000;
+  border-radius: 0px !important;
+}
+
+.atari-box-lg {
+  border: 6px solid #000000;
+  box-shadow: 10px 10px 0px #000000;
+  border-radius: 0px !important;
+}
+
+.atari-box-sm {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  border-radius: 0px !important;
+}
+
+.atari-box-neon {
+  border: 4px solid #00F0FF;
+  box-shadow: 6px 6px 0px #FF0055;
+  border-radius: 0px !important;
+}
+
+/* Atari Button Tactile Click */
+.atari-btn {
+  border: 4px solid #000000;
+  box-shadow: 6px 6px 0px #000000;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+  user-select: none;
+  border-radius: 0px !important;
+}
+
+.atari-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0px #000000;
+}
+
+.atari-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 2px 2px 0px #000000;
+}
+
+/* Arcade Rainbow / Color Bar Header */
+.atari-rainbow-bar {
+  height: 10px;
+  background: linear-gradient(
+    90deg,
+    #FF003C 0%,
+    #FF7700 20%,
+    #FFE600 40%,
+    #00FF66 60%,
+    #00F0FF 80%,
+    #FF007F 100%
+  );
+  border-bottom: 3px solid #000000;
+}
+
+/* CRT Scanlines Overlay */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.3) 50%
+  ), 
+  linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+  opacity: 0.85;
+}
+
+/* Retro CRT Vignette */
+.crt-vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+}
+
+/* 8-bit Blink Keyframes */
+@keyframes arcade-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-arcade-blink {
+  animation: arcade-blink 0.9s infinite;
+}
+
+@keyframes marquee-scroll {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-scroll 18s linear infinite;
+}
+
+/* Pixel Checkered Pattern */
+.bg-atari-grid {
+  background-color: #121016;
+  background-image: 
+    linear-gradient(#201b2d 2px, transparent 2px),
+    linear-gradient(90deg, #201b2d 2px, transparent 2px);
+  background-size: 32px 32px;
+}
+
+/* Woodgrain Accent (Atari 2600 Iconic Styling) */
+.atari-woodgrain {
+  background: repeating-linear-gradient(
+    45deg,
+    #3b1c09,
+    #3b1c09 10px,
+    #2c1507 10px,
+    #2c1507 20px
+  );
+  border: 4px solid #000000;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #0f0e17;
+  border-left: 2px solid #000;
+}
+::-webkit-scrollbar-thumb {
+  background: #ffcc00;
+  border: 2px solid #000;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ff0055;
 }

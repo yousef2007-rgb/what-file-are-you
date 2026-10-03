@@ -1,69 +1,198 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { AtariHeader } from "@/components/AtariHeader";
+import { IntroScreen } from "@/components/IntroScreen";
+import { QuizCard } from "@/components/QuizCard";
+import { ScanningModal } from "@/components/ScanningModal";
+import { ResultScreen } from "@/components/ResultScreen";
+import { CodexModal } from "@/components/CodexModal";
+import { QUIZ_QUESTIONS, FILE_TYPES, QuizOption, FileTypeProfile } from "@/data/quizData";
+import { retroAudio } from "@/lib/audio";
 
 export default function Home() {
+  const [gameState, setGameState] = useState<"intro" | "quiz" | "scanning" | "result">("intro");
+  const [currentQIndex, setCurrentQIndex] = useState<number>(0);
+  const [answers, setAnswers] = useState<Record<number, QuizOption>>({});
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [crtEnabled, setCrtEnabled] = useState<boolean>(true);
+  const [codexOpen, setCodexOpen] = useState<boolean>(false);
+  const [codexInitialId, setCodexInitialId] = useState<string | undefined>(undefined);
+
+  const [primaryResult, setPrimaryResult] = useState<FileTypeProfile>(FILE_TYPES.xml);
+  const [secondaryResult, setSecondaryResult] = useState<FileTypeProfile | null>(FILE_TYPES.css);
+  const [finalScores, setFinalScores] = useState<Record<string, number>>({});
+
+  // Sync sound & CRT settings from localStorage on client mount
+  useEffect(() => {
+    setSoundEnabled(retroAudio.isEnabled());
+    const savedCrt = localStorage.getItem("atari_crt_enabled");
+    if (savedCrt !== null) {
+      setCrtEnabled(savedCrt === "true");
+    }
+  }, []);
+
+  const handleToggleSound = () => {
+    const nextState = retroAudio.toggle();
+    setSoundEnabled(nextState);
+  };
+
+  const handleToggleCrt = () => {
+    const nextVal = !crtEnabled;
+    setCrtEnabled(nextVal);
+    localStorage.setItem("atari_crt_enabled", String(nextVal));
+  };
+
+  const handleStartQuiz = () => {
+    setAnswers({});
+    setCurrentQIndex(0);
+    setGameState("quiz");
+  };
+
+  const handleSelectOption = (option: QuizOption) => {
+    const q = QUIZ_QUESTIONS[currentQIndex];
+    setAnswers((prev) => ({
+      ...prev,
+      [q.id]: option,
+    }));
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentQIndex > 0) {
+      setCurrentQIndex((prev) => prev - 1);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQIndex < QUIZ_QUESTIONS.length - 1) {
+      setCurrentQIndex((prev) => prev + 1);
+    } else {
+      // Finished all questions! Trigger scanning state
+      calculateResults();
+      setGameState("scanning");
+    }
+  };
+
+  const calculateResults = () => {
+    const scores: Record<string, number> = {};
+    Object.keys(FILE_TYPES).forEach((k) => {
+      scores[k] = 0;
+    });
+
+    Object.values(answers).forEach((opt) => {
+      Object.entries(opt.scores).forEach(([fileId, pts]) => {
+        scores[fileId] = (scores[fileId] || 0) + pts;
+      });
+    });
+
+    // Sort by points descending
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const topId = sorted[0] ? sorted[0][0] : "xml";
+    const secondId = sorted[1] ? sorted[1][0] : "php";
+
+    setFinalScores(scores);
+    setPrimaryResult(FILE_TYPES[topId] || FILE_TYPES.xml);
+    setSecondaryResult(FILE_TYPES[secondId] || FILE_TYPES.css);
+  };
+
+  const handleScanComplete = () => {
+    setGameState("result");
+  };
+
+  const handleRestart = () => {
+    setAnswers({});
+    setCurrentQIndex(0);
+    setGameState("intro");
+  };
+
+  const handleOpenCodex = (fileId?: string) => {
+    setCodexInitialId(fileId);
+    setCodexOpen(true);
+  };
+
+  const currentQuestion = QUIZ_QUESTIONS[currentQIndex];
+  const currentSelection = answers[currentQuestion?.id] || null;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-atari-grid flex flex-col justify-between relative overflow-x-hidden">
+      {/* CRT Scanline and Vignette Effects */}
+      {crtEnabled && (
+        <>
+          <div className="crt-overlay" />
+          <div className="crt-vignette" />
+        </>
+      )}
+
+      {/* Top Header HUD */}
+      <AtariHeader
+        soundEnabled={soundEnabled}
+        onToggleSound={handleToggleSound}
+        crtEnabled={crtEnabled}
+        onToggleCrt={handleToggleCrt}
+        onOpenCodex={() => handleOpenCodex()}
+        currentStep={gameState === "quiz" ? currentQIndex + 1 : undefined}
+        totalSteps={gameState === "quiz" ? QUIZ_QUESTIONS.length : undefined}
+      />
+
+      {/* Dynamic View State */}
+      <div className="flex-1 flex items-center justify-center py-4 sm:py-8">
+        {gameState === "intro" && (
+          <IntroScreen
+            onStart={handleStartQuiz}
+            onOpenCodex={() => handleOpenCodex()}
+          />
+        )}
+
+        {gameState === "quiz" && (
+          <QuizCard
+            question={currentQuestion}
+            currentStep={currentQIndex + 1}
+            totalSteps={QUIZ_QUESTIONS.length}
+            selectedOption={currentSelection}
+            onSelectOption={handleSelectOption}
+            onPrev={handlePrevQuestion}
+            onNext={handleNextQuestion}
+            canGoNext={Boolean(currentSelection)}
+          />
+        )}
+
+        {gameState === "result" && (
+          <ResultScreen
+            primaryFile={primaryResult}
+            secondaryFile={secondaryResult}
+            scores={finalScores}
+            onRestart={handleRestart}
+            onOpenCodex={handleOpenCodex}
+          />
+        )}
+      </div>
+
+      {/* Scanning Transition Modal */}
+      {gameState === "scanning" && (
+        <ScanningModal onComplete={handleScanComplete} />
+      )}
+
+      {/* Encyclopedia Codex Modal */}
+      <CodexModal
+        isOpen={codexOpen}
+        onClose={() => setCodexOpen(false)}
+        initialFileId={codexInitialId}
+      />
+
+      {/* Retro Arcade Footer Bar */}
+      <footer className="w-full bg-[#000000] border-t-4 border-black py-3 px-4 text-center select-none text-xs font-arcade text-gray-400">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 bg-[#00FF66] inline-block animate-pulse" />
+            <span className="text-gray-300">
+              ATARI ARCHITECTURE 1977-2026 // EMULATED IN NEXT.JS &amp; TAILWIND
+            </span>
+          </div>
+          <div className="text-gray-500 font-terminal text-base">
+            STRICT BOXY RIGIDITY • SOLID ATARI PALETTES • 8-BIT STEREO
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </footer>
+    </main>
   );
 }
